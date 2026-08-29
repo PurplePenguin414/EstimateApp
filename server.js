@@ -102,6 +102,21 @@ app.post('/api/qb/disconnect', requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
+// Called by Intuit (not by our own UI) if the connection is ever revoked
+// from inside QuickBooks itself, so our stored tokens don't go stale and
+// silently fail on the next API call. Not behind requireAuth since Intuit
+// is the caller here, not a logged-in browser session.
+app.post('/api/qb/disconnect-webhook', async (req, res) => {
+  try {
+    await qbo.disconnect();
+    console.log('QuickBooks disconnect webhook received — cleared stored connection.');
+    res.status(200).send('OK');
+  } catch (err) {
+    console.error('QB disconnect webhook error:', err.message);
+    res.status(500).send('Error');
+  }
+});
+
 app.get('/api/qb/search-estimates', requireAuth, async (req, res) => {
   try {
     const results = await qbo.searchEstimates(req.query.q || '');
