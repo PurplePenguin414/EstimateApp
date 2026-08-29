@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NextWave Estimator</title>
+<link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+  <header class="topbar">
+    <h1>📋 NextWave Estimator</h1>
+    <div class="topbar-actions">
+      <button id="darkModeToggle" class="icon-btn" title="Toggle dark mode">🌙</button>
+      <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
+      <button id="logoutBtn" class="icon-btn" title="Log out">⎋</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== Dashboard view ===== -->
+    <div id="dashboardView">
+      <div class="toolbar">
+        <h2 class="view-heading">Projects</h2>
+        <div class="toolbar-actions">
+          <button id="newFromQbBtn" class="secondary-btn">🔗 Pull from QuickBooks</button>
+          <button id="newManualBtn" class="primary-btn">+ New Project (Manual)</button>
+        </div>
+      </div>
+      <div id="qbWarning" class="warning-banner hidden">
+        QuickBooks isn't connected yet — go to Settings to connect, or create projects manually.
+      </div>
+      <div id="projectList" class="project-list"></div>
+      <div id="emptyState" class="empty-state hidden">No projects yet.</div>
+    </div>
+
+    <!-- ===== Project detail view ===== -->
+    <div id="projectDetailView" class="hidden">
+      <button id="backToDashboardBtn" class="secondary-btn back-btn">← Back to Projects</button>
+
+      <div class="project-header">
+        <h2 id="projectDetailName"></h2>
+        <div class="project-header-actions">
+          <button id="editProjectBtn" class="secondary-btn">Edit</button>
+          <button id="deleteProjectBtn" class="danger-btn">Delete</button>
+        </div>
+      </div>
+      <p id="projectDetailMeta" class="muted-text"></p>
+
+      <div class="tab-row">
+        <button type="button" class="tab-btn active" data-tab="invoicing">Invoicing</button>
+        <button type="button" class="tab-btn" data-tab="calculator">Cost / Profit Calculator</button>
+      </div>
+
+      <!-- Invoicing tab -->
+      <div id="invoicingTab" class="tab-panel">
+        <div class="split-columns">
+          <div class="split-col">
+            <h3>Material Draw <span class="badge category">Due upfront</span></h3>
+            <div id="materialItemsList" class="line-items-list"></div>
+            <p class="split-total" id="materialTotal">Total: $0.00</p>
+            <button id="materialPdfBtn" class="primary-btn">📄 Generate Material Draw PDF</button>
+          </div>
+          <div class="split-col">
+            <h3>Remaining Balance <span class="badge">Due Net 30</span></h3>
+            <div id="laborItemsList" class="line-items-list"></div>
+            <p class="split-total" id="laborTotal">Total: $0.00</p>
+            <button id="laborPdfBtn" class="primary-btn">📄 Generate Remaining Balance PDF</button>
+          </div>
+        </div>
+        <p class="muted-text" style="margin-top:1rem;">Click a line item's category badge to move it between Material Draw and Remaining Balance if something was classified incorrectly.</p>
+      </div>
+
+      <!-- Calculator tab -->
+      <div id="calculatorTab" class="tab-panel hidden">
+        <div class="calc-section">
+          <h3>Material Costs <span class="muted-text">(what you pay — separate from the customer quote)</span></h3>
+          <div id="calcMaterialsList" class="calc-list"></div>
+          <div class="add-row">
+            <input type="text" id="newMaterialDesc" placeholder="Description">
+            <input type="number" id="newMaterialCost" placeholder="Cost" step="0.01">
+            <button id="addMaterialBtn" class="secondary-btn btn-small">+ Add</button>
+          </div>
+        </div>
+
+        <div class="calc-section">
+          <h3>1099 Labor</h3>
+          <div id="calcLaborList" class="calc-list"></div>
+          <div class="add-row">
+            <input type="text" id="newWorkerName" placeholder="Worker name">
+            <input type="number" id="newWorkerHours" placeholder="Hours" step="0.25">
+            <input type="number" id="newWorkerRate" placeholder="Rate/hr" step="0.01">
+            <button id="addLaborBtn" class="secondary-btn btn-small">+ Add</button>
+          </div>
+        </div>
+
+        <div class="calc-summary">
+          <div class="calc-summary-row"><span>Revenue</span><span id="sumRevenue">$0.00</span></div>
+          <div class="calc-summary-row"><span>Material Cost</span><span id="sumMaterialCost">$0.00</span></div>
+          <div class="calc-summary-row"><span>Labor Cost</span><span id="sumLaborCost">$0.00</span></div>
+          <div class="calc-summary-row calc-summary-highlight"><span>Gross Profit</span><span id="sumGrossProfit">$0.00</span></div>
+          <div class="calc-summary-row"><span>Tax Set-Aside (30%)</span><span id="sumTaxSetAside">$0.00</span></div>
+          <div class="calc-summary-row calc-summary-highlight"><span>Net Profit</span><span id="sumNetProfit">$0.00</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- QuickBooks Search Modal -->
+  <div id="qbSearchModal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="closeQbSearchBtn">&times;</button>
+      <h2>Pull Estimate from QuickBooks</h2>
+      <input type="text" id="qbSearchInput" placeholder="Search by estimate # or customer name" class="search-input">
+      <button id="qbSearchGoBtn" class="primary-btn" style="margin-top:0.75rem;">Search</button>
+      <div id="qbSearchResults" class="qb-search-results"></div>
+    </div>
+  </div>
+
+  <!-- Manual New Project Modal -->
+  <div id="manualProjectModal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="closeManualProjectBtn">&times;</button>
+      <h2>New Project</h2>
+      <form id="manualProjectForm">
+        <div class="form-group">
+          <label for="mpName">Project Name</label>
+          <input type="text" id="mpName" required>
+        </div>
+        <div class="form-group">
+          <label for="mpCustomer">Customer Name</label>
+          <input type="text" id="mpCustomer">
+        </div>
+        <div class="form-group">
+          <label for="mpAddress">Customer Address</label>
+          <textarea id="mpAddress" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="mpRevenue">Total Revenue ($)</label>
+          <input type="number" id="mpRevenue" step="0.01">
+        </div>
+        <button type="submit" class="primary-btn">Create Project</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Project Modal -->
+  <div id="editProjectModal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="closeEditProjectBtn">&times;</button>
+      <h2>Edit Project</h2>
+      <form id="editProjectForm">
+        <div class="form-group">
+          <label for="epName">Project Name</label>
+          <input type="text" id="epName" required>
+        </div>
+        <div class="form-group">
+          <label for="epCustomer">Customer Name</label>
+          <input type="text" id="epCustomer">
+        </div>
+        <div class="form-group">
+          <label for="epAddress">Customer Address</label>
+          <textarea id="epAddress" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="epRevenue">Total Revenue ($)</label>
+          <input type="number" id="epRevenue" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="epCompletion">Completion Date</label>
+          <input type="date" id="epCompletion">
+        </div>
+        <button type="submit" class="primary-btn">Save</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="closeSettingsBtn">&times;</button>
+      <h2>Settings</h2>
+
+      <h3>QuickBooks Connection</h3>
+      <p id="qbStatus" class="muted-text">Checking…</p>
+      <button id="qbConnectBtn" class="secondary-btn">Connect QuickBooks</button>
+      <button id="qbDisconnectBtn" class="danger-btn hidden">Disconnect</button>
+
+      <h3>Business Info (shown on invoices)</h3>
+      <form id="businessSettingsForm">
+        <div class="form-group">
+          <label for="bsName">Business Name</label>
+          <input type="text" id="bsName">
+        </div>
+        <div class="form-group">
+          <label for="bsAddress">Address</label>
+          <textarea id="bsAddress" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="bsPhone">Phone</label>
+          <input type="text" id="bsPhone">
+        </div>
+        <div class="form-group">
+          <label for="bsEmail">Email</label>
+          <input type="email" id="bsEmail">
+        </div>
+        <button type="submit" class="secondary-btn">Save Business Info</button>
+      </form>
+
+      <h3>Logo</h3>
+      <div id="currentLogoPreview"></div>
+      <input type="file" id="logoUploadInput" accept="image/*">
+      <button id="logoUploadBtn" class="secondary-btn btn-small">Upload Logo</button>
+    </div>
+  </div>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>

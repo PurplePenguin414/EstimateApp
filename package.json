@@ -1,0 +1,21 @@
+{
+  "name": "nextwave-estimator",
+  "version": "1.0.0",
+  "description": "QuickBooks-connected estimating tool - splits estimates into Material Draw / Remaining Balance invoices, tracks internal cost/profit per project",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "multer": "^2.3.0",
+    "pdfkit": "^0.20.1"
+  }
+}

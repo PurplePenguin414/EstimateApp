@@ -1,0 +1,11 @@
+services:
+  nextwave-estimator:
+    build: .
+    container_name: nextwave-estimator
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3017:3000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
