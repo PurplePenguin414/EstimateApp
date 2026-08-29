@@ -7,7 +7,7 @@ const multer = require('multer');
 const fs = require('fs');
 const db = require('./db');
 const qbo = require('./routes/qbo');
-const { generateInvoicePdf } = require('./routes/pdf');
+const { generateInvoicePdf, generateCostBreakdownPdf } = require('./routes/pdf');
 const { extractEstimateFromPdf } = require('./routes/pdf-extract');
 
 const app = express();
@@ -353,6 +353,28 @@ app.get('/api/projects/:id/financials', requireAuth, (req, res) => {
 });
 
 // ---- PDF generation ----
+app.get('/api/projects/:id/pdf/cost-breakdown', requireAuth, (req, res) => {
+  const project = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
+  if (!project) return res.status(404).json({ error: 'Not found' });
+  const materials = db.prepare('SELECT * FROM project_materials WHERE project_id = ? ORDER BY sort_order, id').all(req.params.id);
+  const labor = db.prepare('SELECT * FROM project_labor WHERE project_id = ? ORDER BY sort_order, id').all(req.params.id);
+  const settings = db.prepare('SELECT * FROM business_settings WHERE id = 1').get();
+  const financials = calculateProjectFinancials(req.params.id);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="cost-breakdown-${project.id}.pdf"`);
+
+  generateCostBreakdownPdf(res, {
+    project, materials, labor, financials, settings,
+    logoPath: settings.logo_filename ? path.join(uploadDir, settings.logo_filename) : null
+  });
+});
+
+// This route uses a wildcard :type param, so it must be registered AFTER
+// the more specific /pdf/cost-breakdown route above — Express matches
+// routes in registration order, and this one would otherwise swallow
+// "cost-breakdown" as an invalid :type value before the specific route
+// ever got a chance to run.
 app.get('/api/projects/:id/pdf/:type', requireAuth, (req, res) => {
   const { id, type } = req.params;
   if (!['material-draw', 'remaining-balance'].includes(type)) {

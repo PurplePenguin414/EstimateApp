@@ -314,6 +314,9 @@ function bindProjectDetail() {
   document.getElementById('laborPdfBtn').addEventListener('click', () => {
     window.open(`/api/projects/${currentProjectId}/pdf/remaining-balance`, '_blank');
   });
+  document.getElementById('costBreakdownPdfBtn').addEventListener('click', () => {
+    window.open(`/api/projects/${currentProjectId}/pdf/cost-breakdown`, '_blank');
+  });
 
   document.getElementById('editProjectBtn').addEventListener('click', openEditProjectModal);
   document.getElementById('closeEditProjectBtn').addEventListener('click', () => document.getElementById('editProjectModal').classList.add('hidden'));
