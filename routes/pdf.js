@@ -145,7 +145,7 @@ function generateCostBreakdownPdf(res, { project, materials, labor, financials, 
   const rowPadding = 8;
 
   function drawSectionTable(title, rows, columns) {
-    doc.font('Helvetica-Bold').fontSize(12).fillColor('#000').text(title);
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#000').text(title, 50, doc.y);
     doc.moveDown(0.3);
 
     if (!rows.length) {
@@ -194,7 +194,7 @@ function generateCostBreakdownPdf(res, { project, materials, labor, financials, 
   // ---- Financial summary ----
   if (doc.y > 620) { doc.addPage(); doc.y = 50; }
   doc.moveDown(0.5);
-  doc.font('Helvetica-Bold').fontSize(12).fillColor('#000').text('Summary');
+  doc.font('Helvetica-Bold').fontSize(12).fillColor('#000').text('Summary', 50, doc.y);
   doc.moveDown(0.3);
 
   const summaryRows = [
