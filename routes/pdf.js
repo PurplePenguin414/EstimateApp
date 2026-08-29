@@ -41,9 +41,13 @@ function generateInvoicePdf(res, { type, project, lineItems, settings, logoPath 
   doc.moveDown(1.5);
 
   // ---- Title ----
-  doc.fontSize(18).fillColor('#000').font('Helvetica-Bold').text(TITLES[type], { align: 'center' });
+  // Explicit x/width here (not just align:'center') because doc.x is still
+  // sitting wherever the right-aligned business info block above left it —
+  // without this, "centered" text centers within that narrower leftover
+  // box, not the actual full page width.
+  doc.fontSize(18).fillColor('#000').font('Helvetica-Bold').text(TITLES[type], 50, doc.y, { width: 512, align: 'center' });
   doc.moveDown(0.3);
-  doc.fontSize(10).fillColor('#666').font('Helvetica').text(TERMS[type], { align: 'center' });
+  doc.fontSize(10).fillColor('#666').font('Helvetica').text(TERMS[type], 50, doc.y, { width: 512, align: 'center' });
   doc.moveDown(1.5);
 
   // ---- Customer + project info ----
