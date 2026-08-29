@@ -71,13 +71,24 @@ function generateInvoicePdf(res, { type, project, lineItems, settings, logoPath 
   doc.font('Helvetica').fontSize(10);
   let total = 0;
 
+  const descWidth = 320;
+  const rowPadding = 8;
+
   lineItems.forEach(item => {
-    if (y > 700) { doc.addPage(); y = 50; }
-    doc.text(item.description, col.desc, y, { width: 320 });
+    // Calculate the actual rendered height of this item's description at
+    // the column width BEFORE drawing anything — long descriptions wrap to
+    // multiple lines, and a fixed row height (the previous bug) caused
+    // longer items to overlap the row below them.
+    const descHeight = doc.heightOfString(item.description, { width: descWidth });
+    const rowHeight = Math.max(descHeight, 14) + rowPadding;
+
+    if (y + rowHeight > 700) { doc.addPage(); y = 50; }
+
+    doc.text(item.description, col.desc, y, { width: descWidth });
     doc.text(String(item.quantity), col.qty, y);
     doc.text(formatCurrency(item.amount), col.amount, y);
     total += item.amount;
-    y += 20;
+    y += rowHeight;
   });
 
   doc.moveTo(50, y + 5).lineTo(562, y + 5).strokeColor('#999').stroke();
