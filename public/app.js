@@ -385,6 +385,34 @@ function bindSettings() {
     alert('Logo uploaded.');
     loadCurrentLogo();
   });
+
+  document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('cpError');
+    errorEl.classList.add('hidden');
+
+    const newPass = document.getElementById('cpNew').value;
+    const confirmPass = document.getElementById('cpConfirm').value;
+    if (newPass !== confirmPass) {
+      errorEl.textContent = 'New password and confirmation do not match.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/change-password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: document.getElementById('cpCurrent').value, new_password: newPass })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to change password');
+      alert('Password changed successfully.');
+      document.getElementById('changePasswordForm').reset();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.classList.remove('hidden');
+    }
+  });
 }
 
 async function openSettingsModal() {
