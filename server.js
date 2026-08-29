@@ -8,6 +8,7 @@ const fs = require('fs');
 const db = require('./db');
 const qbo = require('./routes/qbo');
 const { generateInvoicePdf } = require('./routes/pdf');
+const { extractEstimateFromPdf } = require('./routes/pdf-extract');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,6 +16,9 @@ const PORT = process.env.PORT || 3000;
 const uploadDir = path.join(__dirname, 'data', 'uploads');
 fs.mkdirSync(uploadDir, { recursive: true });
 const upload = multer({ dest: uploadDir, limits: { fileSize: 5 * 1024 * 1024 } });
+// Separate in-memory upload for PDF parsing — the PDF itself doesn't need
+// to be saved to disk, only the data extracted from it.
+const pdfUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -199,6 +203,41 @@ app.post('/api/projects', requireAuth, (req, res) => {
   res.status(201).json(db.prepare('SELECT * FROM projects WHERE id = ?').get(result.lastInsertRowid));
 });
 
+// ---- Create a project from an uploaded QuickBooks estimate PDF ----
+// Two steps: parse-and-preview (nothing saved yet, so the user can review
+// and fix anything before it becomes a real project), then confirm-and-create.
+app.post('/api/parse-pdf-estimate', requireAuth, pdfUpload.single('estimate'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No PDF uploaded' });
+  try {
+    const extracted = await extractEstimateFromPdf(req.file.buffer);
+    res.json(extracted);
+  } catch (err) {
+    console.error('PDF extraction error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/projects/from-pdf', requireAuth, (req, res) => {
+  const { project_name, customer_name, customer_address, total_revenue, items } = req.body;
+  if (!project_name || !Array.isArray(items)) {
+    return res.status(400).json({ error: 'project_name and items are required' });
+  }
+  const result = db.prepare(`
+    INSERT INTO projects (project_name, customer_name, customer_address, total_revenue) VALUES (?, ?, ?, ?)
+  `).run(project_name, customer_name || null, customer_address || null, total_revenue || 0);
+  const projectId = result.lastInsertRowid;
+
+  const insertLine = db.prepare(`
+    INSERT INTO project_line_items (project_id, description, quantity, amount, qb_item_type, classification, sort_order)
+    VALUES (?, ?, ?, ?, NULL, ?, ?)
+  `);
+  items.forEach((item, idx) => {
+    insertLine.run(projectId, item.description, item.quantity || 1, item.amount, item.classification, idx);
+  });
+
+  res.status(201).json(db.prepare('SELECT * FROM projects WHERE id = ?').get(projectId));
+});
+
 app.put('/api/projects/:id', requireAuth, (req, res) => {
   const existing = db.prepare('SELECT * FROM projects WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Not found' });
@@ -227,6 +266,31 @@ app.put('/api/line-items/:id', requireAuth, (req, res) => {
     return res.status(400).json({ error: 'classification must be material or labor_other' });
   }
   db.prepare('UPDATE project_line_items SET classification = ? WHERE id = ?').run(classification, req.params.id);
+  res.json({ success: true });
+});
+
+// Manually add a line item — the missing piece for projects not pulled
+// from QuickBooks. Same shape/table as QB-pulled items, so the invoicing
+// split and PDF generation work identically either way.
+app.post('/api/projects/:id/line-items', requireAuth, (req, res) => {
+  const { description, quantity, amount, classification } = req.body;
+  if (!description || amount === undefined || !classification) {
+    return res.status(400).json({ error: 'description, amount, and classification are required' });
+  }
+  if (!['material', 'labor_other'].includes(classification)) {
+    return res.status(400).json({ error: 'classification must be material or labor_other' });
+  }
+  const maxOrder = db.prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM project_line_items WHERE project_id = ?').get(req.params.id).m;
+  const result = db.prepare(`
+    INSERT INTO project_line_items (project_id, description, quantity, amount, qb_item_type, classification, sort_order)
+    VALUES (?, ?, ?, ?, NULL, ?, ?)
+  `).run(req.params.id, description, quantity || 1, amount, classification, maxOrder + 1);
+  res.status(201).json(db.prepare('SELECT * FROM project_line_items WHERE id = ?').get(result.lastInsertRowid));
+});
+
+app.delete('/api/line-items/:id', requireAuth, (req, res) => {
+  const result = db.prepare('DELETE FROM project_line_items WHERE id = ?').run(req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
   res.json({ success: true });
 });
 

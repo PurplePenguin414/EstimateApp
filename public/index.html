@@ -22,6 +22,7 @@
       <div class="toolbar">
         <h2 class="view-heading">Projects</h2>
         <div class="toolbar-actions">
+          <button id="newFromPdfBtn" class="secondary-btn">📄 Upload PDF Estimate</button>
           <button id="newFromQbBtn" class="secondary-btn">🔗 Pull from QuickBooks</button>
           <button id="newManualBtn" class="primary-btn">+ New Project (Manual)</button>
         </div>
@@ -68,6 +69,20 @@
           </div>
         </div>
         <p class="muted-text" style="margin-top:1rem;">Click a line item's category badge to move it between Material Draw and Remaining Balance if something was classified incorrectly.</p>
+
+        <div class="calc-section" style="margin-top:1.5rem;">
+          <h3>Add a Line Item</h3>
+          <div class="add-row">
+            <input type="text" id="newLineDesc" placeholder="Description" style="flex:2;">
+            <input type="number" id="newLineQty" placeholder="Qty" step="0.01" value="1" style="max-width:80px;">
+            <input type="number" id="newLineAmount" placeholder="Amount" step="0.01">
+            <select id="newLineClassification">
+              <option value="material">Material Draw</option>
+              <option value="labor_other">Remaining Balance</option>
+            </select>
+            <button id="addLineItemBtn" class="secondary-btn btn-small">+ Add</button>
+          </div>
+        </div>
       </div>
 
       <!-- Calculator tab -->
@@ -113,6 +128,52 @@
       <input type="text" id="qbSearchInput" placeholder="Search by estimate # or customer name" class="search-input">
       <button id="qbSearchGoBtn" class="primary-btn" style="margin-top:0.75rem;">Search</button>
       <div id="qbSearchResults" class="qb-search-results"></div>
+    </div>
+  </div>
+
+  <!-- PDF Upload & Review Modal -->
+  <div id="pdfUploadModal" class="modal hidden">
+    <div class="modal-content modal-wide">
+      <button class="modal-close" id="closePdfUploadBtn">&times;</button>
+      <h2>Upload PDF Estimate</h2>
+
+      <div id="pdfUploadStep">
+        <p class="muted-text">Upload a QuickBooks estimate exported as PDF. You'll be able to review and fix anything before it becomes a real project.</p>
+        <input type="file" id="pdfFileInput" accept="application/pdf">
+        <button id="pdfExtractBtn" class="primary-btn" style="margin-top:0.75rem;">Extract</button>
+        <p id="pdfExtractError" class="error-text hidden"></p>
+      </div>
+
+      <div id="pdfReviewStep" class="hidden">
+        <div id="pdfTotalWarning" class="warning-banner hidden"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pdfProjectName">Project Name</label>
+            <input type="text" id="pdfProjectName">
+          </div>
+          <div class="form-group">
+            <label for="pdfCustomerName">Customer Name</label>
+            <input type="text" id="pdfCustomerName">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="pdfCustomerAddress">Customer Address</label>
+          <textarea id="pdfCustomerAddress" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="pdfTotalRevenue">Total Revenue ($)</label>
+          <input type="number" id="pdfTotalRevenue" step="0.01">
+        </div>
+
+        <h3>Line Items — review and fix anything that looks wrong</h3>
+        <div id="pdfItemsTable"></div>
+
+        <div class="modal-actions" style="margin-top:1.25rem;">
+          <button type="button" id="pdfBackBtn" class="secondary-btn">← Upload a different file</button>
+          <button type="button" id="pdfConfirmCreateBtn" class="primary-btn">Create Project</button>
+        </div>
+      </div>
     </div>
   </div>
 

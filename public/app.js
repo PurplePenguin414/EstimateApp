@@ -75,6 +75,122 @@ function bindDashboard() {
     document.getElementById('dashboardView').classList.remove('hidden');
     loadDashboard();
   });
+
+  document.getElementById('newFromPdfBtn').addEventListener('click', openPdfUploadModal);
+}
+
+// ================= PDF upload & review =================
+let pdfReviewItems = [];
+
+function openPdfUploadModal() {
+  document.getElementById('pdfFileInput').value = '';
+  document.getElementById('pdfExtractError').classList.add('hidden');
+  document.getElementById('pdfUploadStep').classList.remove('hidden');
+  document.getElementById('pdfReviewStep').classList.add('hidden');
+  document.getElementById('pdfUploadModal').classList.remove('hidden');
+}
+
+async function extractPdf() {
+  const fileInput = document.getElementById('pdfFileInput');
+  const errorEl = document.getElementById('pdfExtractError');
+  errorEl.classList.add('hidden');
+
+  if (!fileInput.files.length) { errorEl.textContent = 'Choose a PDF first.'; errorEl.classList.remove('hidden'); return; }
+
+  const btn = document.getElementById('pdfExtractBtn');
+  const original = btn.textContent;
+  btn.textContent = 'Extracting…';
+  btn.disabled = true;
+
+  try {
+    const formData = new FormData();
+    formData.append('estimate', fileInput.files[0]);
+    const res = await fetch('/api/parse-pdf-estimate', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Extraction failed');
+
+    document.getElementById('pdfProjectName').value = `${data.customerName || 'Project'} — Est. #${data.estimateNumber || ''}`.trim();
+    document.getElementById('pdfCustomerName').value = data.customerName || '';
+    document.getElementById('pdfCustomerAddress').value = data.customerAddress || '';
+    document.getElementById('pdfTotalRevenue').value = data.extractedTotal || 0;
+
+    const warningEl = document.getElementById('pdfTotalWarning');
+    if (!data.totalMatches) {
+      warningEl.textContent = `Heads up: the extracted line items sum to ${formatCurrency(data.extractedTotal)}, but the PDF states a total of ${data.statedTotal != null ? formatCurrency(data.statedTotal) : 'unknown'}. Double-check the items below before creating this project.`;
+      warningEl.classList.remove('hidden');
+    } else {
+      warningEl.classList.add('hidden');
+    }
+
+    pdfReviewItems = data.items.map(i => ({ ...i }));
+    renderPdfItemsTable();
+
+    document.getElementById('pdfUploadStep').classList.add('hidden');
+    document.getElementById('pdfReviewStep').classList.remove('hidden');
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+}
+
+function renderPdfItemsTable() {
+  const container = document.getElementById('pdfItemsTable');
+  container.innerHTML = `
+    <div class="pdf-item-row pdf-item-row-header">
+      <span>Description</span><span>Qty</span><span>Amount</span><span>Category</span><span></span>
+    </div>
+  ` + pdfReviewItems.map((item, idx) => `
+    <div class="pdf-item-row" data-idx="${idx}">
+      <input type="text" class="pdf-item-desc" value="${escapeHtml(item.description)}">
+      <input type="number" class="pdf-item-qty" value="${item.quantity}" step="0.01">
+      <input type="number" class="pdf-item-amount" value="${item.amount}" step="0.01">
+      <select class="pdf-item-class">
+        <option value="material" ${item.classification === 'material' ? 'selected' : ''}>Material</option>
+        <option value="labor_other" ${item.classification === 'labor_other' ? 'selected' : ''}>Labor/Other</option>
+      </select>
+      <button type="button" class="pdf-item-remove" data-idx="${idx}" title="Remove this item">&times;</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.pdf-item-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pdfReviewItems.splice(parseInt(btn.dataset.idx), 1);
+      renderPdfItemsTable();
+    });
+  });
+}
+
+function collectPdfItemsFromTable() {
+  const rows = document.querySelectorAll('#pdfItemsTable .pdf-item-row[data-idx]');
+  return Array.from(rows).map(row => ({
+    description: row.querySelector('.pdf-item-desc').value,
+    quantity: parseFloat(row.querySelector('.pdf-item-qty').value) || 1,
+    amount: parseFloat(row.querySelector('.pdf-item-amount').value) || 0,
+    classification: row.querySelector('.pdf-item-class').value
+  }));
+}
+
+async function confirmCreateFromPdf() {
+  const payload = {
+    project_name: document.getElementById('pdfProjectName').value,
+    customer_name: document.getElementById('pdfCustomerName').value,
+    customer_address: document.getElementById('pdfCustomerAddress').value,
+    total_revenue: parseFloat(document.getElementById('pdfTotalRevenue').value) || 0,
+    items: collectPdfItemsFromTable()
+  };
+  if (!payload.project_name || !payload.items.length) {
+    alert('Project name and at least one line item are required.');
+    return;
+  }
+
+  const res = await fetch('/api/projects/from-pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  const project = await res.json();
+  if (!res.ok) { alert(project.error || 'Failed to create project'); return; }
+  document.getElementById('pdfUploadModal').classList.add('hidden');
+  openProjectDetail(project.id);
 }
 
 async function loadDashboard() {
@@ -129,6 +245,15 @@ function bindModals() {
   document.getElementById('qbSearchModal').addEventListener('click', (e) => { if (e.target.id === 'qbSearchModal') e.target.classList.add('hidden'); });
   document.getElementById('qbSearchGoBtn').addEventListener('click', runQbSearch);
   document.getElementById('qbSearchInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') runQbSearch(); });
+
+  document.getElementById('closePdfUploadBtn').addEventListener('click', () => document.getElementById('pdfUploadModal').classList.add('hidden'));
+  document.getElementById('pdfUploadModal').addEventListener('click', (e) => { if (e.target.id === 'pdfUploadModal') e.target.classList.add('hidden'); });
+  document.getElementById('pdfExtractBtn').addEventListener('click', extractPdf);
+  document.getElementById('pdfBackBtn').addEventListener('click', () => {
+    document.getElementById('pdfReviewStep').classList.add('hidden');
+    document.getElementById('pdfUploadStep').classList.remove('hidden');
+  });
+  document.getElementById('pdfConfirmCreateBtn').addEventListener('click', confirmCreateFromPdf);
 }
 
 async function runQbSearch() {
@@ -199,6 +324,24 @@ function bindProjectDetail() {
 
   document.getElementById('addMaterialBtn').addEventListener('click', addMaterial);
   document.getElementById('addLaborBtn').addEventListener('click', addLabor);
+  document.getElementById('addLineItemBtn').addEventListener('click', addLineItem);
+}
+
+async function addLineItem() {
+  const description = document.getElementById('newLineDesc').value.trim();
+  const quantity = parseFloat(document.getElementById('newLineQty').value) || 1;
+  const amount = parseFloat(document.getElementById('newLineAmount').value);
+  const classification = document.getElementById('newLineClassification').value;
+  if (!description || isNaN(amount)) { alert('Enter a description and a valid amount.'); return; }
+
+  await fetch(`/api/projects/${currentProjectId}/line-items`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ description, quantity, amount, classification })
+  });
+  document.getElementById('newLineDesc').value = '';
+  document.getElementById('newLineQty').value = '1';
+  document.getElementById('newLineAmount').value = '';
+  loadProjectDetail();
 }
 
 async function openProjectDetail(id) {
@@ -231,6 +374,7 @@ function renderLineItemSplit(lineItems) {
       <span>${escapeHtml(i.description)}</span>
       <span class="line-item-amount">${formatCurrency(i.amount)}</span>
       <button type="button" class="reclassify-btn" data-id="${i.id}" data-target="${targetClassification}" title="Move to the other invoice">⇄</button>
+      <button type="button" class="remove-line-btn" data-line-id="${i.id}" title="Delete this line item">&times;</button>
     </div>
   `).join('') || '<p class="muted-text">No items.</p>';
 
@@ -246,6 +390,14 @@ function renderLineItemSplit(lineItems) {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ classification: btn.dataset.target })
       });
+      loadProjectDetail();
+    });
+  });
+
+  document.querySelectorAll('[data-line-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Delete this line item?')) return;
+      await fetch(`/api/line-items/${btn.dataset.lineId}`, { method: 'DELETE' });
       loadProjectDetail();
     });
   });

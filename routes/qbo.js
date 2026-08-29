@@ -130,7 +130,11 @@ async function qboFetch(realmId, accessToken, path) {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`QuickBooks API returned ${res.status}: ${body}`);
+    const intuitTid = res.headers.get('intuit_tid');
+    // intuit_tid uniquely identifies this specific request on Intuit's side —
+    // capturing it means their support team can look up exactly what
+    // happened server-side if we ever need to report an issue.
+    throw new Error(`QuickBooks API returned ${res.status}: ${body}${intuitTid ? ` [intuit_tid: ${intuitTid}]` : ''}`);
   }
   return res.json();
 }
