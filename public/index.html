@@ -210,6 +210,24 @@
       <div id="currentLogoPreview"></div>
       <input type="file" id="logoUploadInput" accept="image/*">
       <button id="logoUploadBtn" class="secondary-btn btn-small">Upload Logo</button>
+
+      <h3>Change Password</h3>
+      <form id="changePasswordForm">
+        <div class="form-group">
+          <label for="cpCurrent">Current Password</label>
+          <input type="password" id="cpCurrent" required autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label for="cpNew">New Password</label>
+          <input type="password" id="cpNew" required autocomplete="new-password" minlength="6">
+        </div>
+        <div class="form-group">
+          <label for="cpConfirm">Confirm New Password</label>
+          <input type="password" id="cpConfirm" required autocomplete="new-password" minlength="6">
+        </div>
+        <p id="cpError" class="error-text hidden"></p>
+        <button type="submit" class="secondary-btn">Change Password</button>
+      </form>
     </div>
   </div>
 
