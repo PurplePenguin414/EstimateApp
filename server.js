@@ -335,6 +335,7 @@ function calculateProjectFinancials(projectId) {
   const grossProfit = project.total_revenue - totalMaterialCost - totalLaborCost;
   const taxSetAside = grossProfit > 0 ? grossProfit * 0.30 : 0;
   const netProfit = grossProfit - taxSetAside;
+  const netProfitPercentage = project.total_revenue > 0 ? (netProfit / project.total_revenue) * 100 : 0;
 
   return {
     revenue: project.total_revenue,
@@ -342,7 +343,8 @@ function calculateProjectFinancials(projectId) {
     total_labor_cost: totalLaborCost,
     gross_profit: grossProfit,
     tax_set_aside: taxSetAside,
-    net_profit: netProfit
+    net_profit: netProfit,
+    net_profit_percentage: netProfitPercentage
   };
 }
 
