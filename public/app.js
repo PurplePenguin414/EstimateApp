@@ -467,6 +467,7 @@ async function loadFinancials() {
   document.getElementById('sumGrossProfit').textContent = formatCurrency(financials.gross_profit);
   document.getElementById('sumTaxSetAside').textContent = formatCurrency(financials.tax_set_aside);
   document.getElementById('sumNetProfit').textContent = formatCurrency(financials.net_profit);
+  document.getElementById('sumNetProfitPct').textContent = financials.net_profit_percentage.toFixed(1) + '%';
 }
 
 // ---- Edit / delete project ----
