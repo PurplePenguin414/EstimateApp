@@ -203,7 +203,8 @@ function generateCostBreakdownPdf(res, { project, materials, labor, financials, 
     ['Labor Cost', formatCurrency(financials.total_labor_cost)],
     ['Gross Profit', formatCurrency(financials.gross_profit)],
     ['Tax Set-Aside (30%)', formatCurrency(financials.tax_set_aside)],
-    ['Net Profit', formatCurrency(financials.net_profit)]
+    ['Net Profit', formatCurrency(financials.net_profit)],
+    ['Net Profit % of Revenue', financials.net_profit_percentage.toFixed(1) + '%']
   ];
   doc.font('Helvetica').fontSize(11);
   summaryRows.forEach(([label, value], idx) => {
