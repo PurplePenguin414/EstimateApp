@@ -137,10 +137,10 @@ app.get('/api/settings', requireAuth, (req, res) => {
 });
 
 app.put('/api/settings', requireAuth, (req, res) => {
-  const { business_name, address, phone, email } = req.body;
+  const { business_name, address, phone, email, invoice_disclaimer } = req.body;
   db.prepare(`
-    UPDATE business_settings SET business_name=?, address=?, phone=?, email=?, updated_at=datetime('now') WHERE id=1
-  `).run(business_name || null, address || null, phone || null, email || null);
+    UPDATE business_settings SET business_name=?, address=?, phone=?, email=?, invoice_disclaimer=?, updated_at=datetime('now') WHERE id=1
+  `).run(business_name || null, address || null, phone || null, email || null, invoice_disclaimer || null);
   res.json(db.prepare('SELECT * FROM business_settings WHERE id = 1').get());
 });
 

@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS business_settings (
   phone TEXT,
   email TEXT,
   logo_filename TEXT,
+  invoice_disclaimer TEXT,
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -115,5 +116,17 @@ function ensureSettingsRow() {
   }
 }
 ensureSettingsRow();
+
+// Safe, additive migration: invoice_disclaimer may not exist yet on an
+// already-deployed business_settings table — ADD COLUMN is safe here since
+// it's just a plain nullable text field, no CHECK constraint involved.
+function ensureInvoiceDisclaimerColumn() {
+  const cols = db.prepare("PRAGMA table_info(business_settings)").all().map(c => c.name);
+  if (!cols.includes('invoice_disclaimer')) {
+    db.exec('ALTER TABLE business_settings ADD COLUMN invoice_disclaimer TEXT');
+    console.log('Migrated business_settings table: added invoice_disclaimer column.');
+  }
+}
+ensureInvoiceDisclaimerColumn();
 
 module.exports = db;
