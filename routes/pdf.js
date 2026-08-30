@@ -101,6 +101,17 @@ function generateInvoicePdf(res, { type, project, lineItems, settings, logoPath 
   doc.font('Helvetica-Bold').fontSize(12);
   doc.text('Total Due:', col.qty, y);
   doc.text(formatCurrency(total), col.amount, y);
+  y += 30;
+
+  if (settings.invoice_disclaimer) {
+    const disclaimerWidth = 512;
+    const disclaimerHeight = doc.heightOfString(settings.invoice_disclaimer, { width: disclaimerWidth });
+    if (y + disclaimerHeight > 700) { doc.addPage(); y = 50; }
+    doc.moveTo(50, y).lineTo(562, y).strokeColor('#ccc').stroke();
+    y += 12;
+    doc.font('Helvetica').fontSize(8).fillColor('#666');
+    doc.text(settings.invoice_disclaimer, 50, y, { width: disclaimerWidth });
+  }
 
   doc.end();
 }
