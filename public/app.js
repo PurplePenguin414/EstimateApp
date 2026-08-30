@@ -526,7 +526,8 @@ function bindSettings() {
       business_name: document.getElementById('bsName').value,
       address: document.getElementById('bsAddress').value,
       phone: document.getElementById('bsPhone').value,
-      email: document.getElementById('bsEmail').value
+      email: document.getElementById('bsEmail').value,
+      invoice_disclaimer: document.getElementById('bsDisclaimer').value
     };
     await fetch('/api/settings', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     alert('Business info saved.');
@@ -579,6 +580,7 @@ async function openSettingsModal() {
   document.getElementById('bsAddress').value = settings.address || '';
   document.getElementById('bsPhone').value = settings.phone || '';
   document.getElementById('bsEmail').value = settings.email || '';
+  document.getElementById('bsDisclaimer').value = settings.invoice_disclaimer || '';
   loadCurrentLogo(settings);
 }
 
